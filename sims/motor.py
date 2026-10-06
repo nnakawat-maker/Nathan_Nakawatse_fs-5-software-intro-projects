@@ -14,24 +14,23 @@ class State:
     ypos:float
 
 time_step = 0.01
-plot_size = 300
+plot_size = 150
 
 def step (state:State) -> State:
     #constants
     mass = 300
-    max_motor_torque = 180
-    radius = 0.216
-    gear_ratio = 300
+    max_propulsion_force = 2000
+    max_velocity = 27
 
-    if (state.time <= 7):
+    if (state.time <= 3):
         driver_input = state.time/7
-    elif (state.time <= 22):
+    elif (state.time <= 23):
         driver_input = 1.0
     else:
         driver_input = 0.0
 
-    command_torque = driver_input * max_motor_torque
-    force = (command_torque * gear_ratio) / radius
+    
+    force = max_propulsion_force * driver_input * (1 - (state.velocity/max_velocity))
     accel = force/mass
 
     return State(
