@@ -1,25 +1,117 @@
+PythonFinalizationError
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
+import sys
+
+# Simulation Parameters
+@dataclass(frozen=True)
+class Parameters:
+    """
+    An object that stores the simulation parameters.
+    Can be edited to change simulation values, or add new parameter variables.
+    Units are Base SI unless otherwise stated.
+    """
+    simulationDuration:float = 10 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
+    simulationEndCondition:float = -1 # The simulation ends when xvelocity <= this variable '-1' makes it so there is no end condition.
+    timestep:float = 0.1
+    xPlotSize:int = 300
+    yPlotSize:int = 10
+    expandGraph:bool = True # If true, the simulation's graph plot will change pages to fit the car
+    initPosition:list[float] = field(default_factory=lambda: [0.0, 0.0])
+    initVelocity:list[float] = field(default_factory=lambda: [0.0, 0.0])
+
+    mass:float = 300.0
 
 @dataclass
 class State:
-    pass
+    """
+    An object that stores the car's data related to its position and velocity at a specific time.
+    """
+    time:float
+    xpos:float
+    ypos:float
+    xvelocity:float
+    yvelocity:float
 
 def step (state:State) -> State:
-    pass
+    """
+    Steps the car's state forwards by one timestep, performs calculations for this new State, 
+    and returns a newly updates State object.
+    Can be edited to change input conditions and times, and change equations for calculation
+    """
+    # Driver input conditions
+    if (state.time <= 10):
+        driver_input = 1
+    else:
+        driver_input = 0
+    # Calculate acceleration
+    acceleration = driver_input
+
+    # Return a new State with updated time, position and velocity
+    return State(
+        time = state.time + parameters.timestep,
+        xpos = state.xpos + (state.xvelocity * parameters.timestep),
+        ypos = 0.0,
+        xvelocity = state.xvelocity + (acceleration * parameters.timestep),
+        yvelocity = 0.0
+    )
 
 def animate (i):
-    pass
+    """
+    Is repeatedly called by FuncAnimation, calls step() and edits the graph.
+    """
+    global s0, car
+    # Step forwards and get updated state
+    s0 = step(s0)  
 
+    # Check for simulation stop conditions
+    if ((parameters.simulationDuration != -1 and s0.time >= parameters.simulationDuration) or
+        (parameters.simulationEndCondition != -1 and s0.xvelocity <= parameters.simulationEndCondition)
+        ):
+        print(f"Simulation Terminated.")
+        ani.event_source.stop()
+
+    # Update the car's coordinates
+    car.set_offsets([[s0.xpos, s0.ypos]])
+
+    # Check if the car's coordinates exceed the current page of the plot
+    if (parameters.expandGraph):
+        xCurrentPage = s0.xpos // parameters.xPlotSize
+        xMin = xCurrentPage * parameters.xPlotSize
+        xMax = (xCurrentPage + 1) * parameters.xPlotSize
+        
+        yCurrentPage = s0.ypos // parameters.yPlotSize
+        yMin = yCurrentPage * parameters.yPlotSize
+        yMax = (yCurrentPage + 1) * parameters.yPlotSize
+
+        # Update the limits of the plot
+        if ax.get_xlim() != (xMin, xMax):
+            ax.set_xlim(xMin, xMax)
+        if ax.get_ylim() != (yMin, yMax):
+            ax.set_ylim(yMin, yMax)
+
+    return
+
+
+parameters = Parameters()
+s0 = State(time = 0, xpos = parameters.initPosition[0], ypos = parameters.initPosition[1], xvelocity = parameters.initVelocity[0], yvelocity= parameters.initVelocity[1])
 
 fig = plt.figure(figsize=(3,3), dpi=150)
 ax = fig.add_subplot(111)
 ax.grid()
 ax.set_xlim(-2, 2)
 ax.set_ylim(-2, 2)
-# these lines are so the animation doesnt zoom in or out
+# These lines are so the animation doesnt zoom in or out
 plt.pause(3)
+
+ax.set_xlim(0, parameters.xPlotSize)
+ax.set_ylim(0, parameters.yPlotSize)
+
+car = ax.scatter([parameters.initPosition[0]],[parameters.initPosition[1]], s = 200, c = 'red', marker = 's')
+
 ani = animation.FuncAnimation(fig, animate, interval=0)
 plt.show()
