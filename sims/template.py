@@ -18,9 +18,11 @@ class Parameters:
     simulationDuration:float = 10 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
     simulationEndCondition:float = -1 # The simulation ends when xvelocity <= this variable '-1' makes it so there is no end condition.
     timestep:float = 0.1
+
     xPlotSize:int = 300
     yPlotSize:int = 10
     expandGraph:bool = True # If true, the simulation's graph plot will change pages to fit the car
+
     initPosition:list[float] = field(default_factory=lambda: [0.0, 0.0])
     initVelocity:list[float] = field(default_factory=lambda: [0.0, 0.0])
 
@@ -32,10 +34,10 @@ class State:
     An object that stores the car's data related to its position and velocity at a specific time.
     """
     time:float
-    xpos:float
-    ypos:float
-    xvelocity:float
-    yvelocity:float
+    xPos:float
+    yPos:float
+    xVelocity:float
+    yVelocity:float
 
 def step (state:State) -> State:
     """
@@ -54,10 +56,10 @@ def step (state:State) -> State:
     # Return a new State with updated time, position and velocity
     return State(
         time = state.time + parameters.timestep,
-        xpos = state.xpos + (state.xvelocity * parameters.timestep),
-        ypos = 0.0,
-        xvelocity = state.xvelocity + (acceleration * parameters.timestep),
-        yvelocity = 0.0
+        xPos = state.xPos + (state.xVelocity * parameters.timestep),
+        yPos = 0.0,
+        xVelocity = state.xVelocity + (acceleration * parameters.timestep),
+        yVelocity = 0.0
     )
 
 def animate (i):
@@ -76,15 +78,15 @@ def animate (i):
         ani.event_source.stop()
 
     # Update the car's coordinates
-    car.set_offsets([[s0.xpos, s0.ypos]])
+    car.set_offsets([[s0.xPos, s0.yPos]])
 
     # Check if the car's coordinates exceed the current page of the plot
     if (parameters.expandGraph):
-        xCurrentPage = s0.xpos // parameters.xPlotSize
+        xCurrentPage = s0.xPos // parameters.xPlotSize
         xMin = xCurrentPage * parameters.xPlotSize
         xMax = (xCurrentPage + 1) * parameters.xPlotSize
         
-        yCurrentPage = s0.ypos // parameters.yPlotSize
+        yCurrentPage = s0.yPos // parameters.yPlotSize
         yMin = yCurrentPage * parameters.yPlotSize
         yMax = (yCurrentPage + 1) * parameters.yPlotSize
 
@@ -98,7 +100,7 @@ def animate (i):
 
 
 parameters = Parameters()
-s0 = State(time = 0, xpos = parameters.initPosition[0], ypos = parameters.initPosition[1], xvelocity = parameters.initVelocity[0], yvelocity= parameters.initVelocity[1])
+s0 = State(time = 0, xPos = parameters.initPosition[0], yPos = parameters.initPosition[1], xVelocity = parameters.initVelocity[0], yVelocity= parameters.initVelocity[1])
 
 fig = plt.figure(figsize=(3,3), dpi=150)
 ax = fig.add_subplot(111)
