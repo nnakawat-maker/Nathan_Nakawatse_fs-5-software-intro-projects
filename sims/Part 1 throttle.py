@@ -15,19 +15,21 @@ class Parameters:
     Can be edited to change simulation values, or add new parameter variables.
     Units are Base SI unless otherwise stated.
     """
-    simulationDuration:float = 10 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
-    simulationEndCondition:float = -1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
-    simulationEndConditionStart:float = 10 # The time to start checking for the simulation end condition, if there is one
-    timestep:float = 0.1
+    simulationDuration:float = 22 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
+    simulationEndCondition:float = -1 # The simulation ends when xvelocity <= this variable '-1' makes it so there is no end condition.
+    timestep:float = 0.01
 
-    xPlotSize:int = 300
+    xPlotSize:int = 1000
     yPlotSize:int = 10
     expandGraph:bool = True # If true, the simulation's graph plot will change pages to fit the car
 
     initPosition:list[float] = field(default_factory=lambda: [0.0, 0.0])
     initVelocity:list[float] = field(default_factory=lambda: [0.0, 0.0])
 
+    maxMotorTorque:float = 180.0
     mass:float = 300.0
+    gearRatio:float = 3
+    wheelRadius:float = 0.216
 
 @dataclass
 class State:
@@ -47,12 +49,14 @@ def step (state:State) -> State:
     Can be edited to change input conditions and times, and change equations for calculation
     """
     # Driver input conditions
-    if (state.time <= 10):
-        driver_input = 1
+    if (state.time <= 7):
+        driver_input = state.time / 7
     else:
-        driver_input = 0
+        driver_input = 1
     # Calculate acceleration
-    acceleration = driver_input
+    commandTorque = driver_input * parameters.maxMotorTorque
+    force = (commandTorque * parameters.gearRatio) / parameters.wheelRadius
+    acceleration = force / parameters.mass
 
     # Return a new State with updated time, position and velocity
     return State(
@@ -73,8 +77,7 @@ def animate (i):
 
     # Check for simulation stop conditions
     if ((parameters.simulationDuration != -1 and s0.time >= parameters.simulationDuration) or
-        (parameters.simulationEndCondition != -1 and s0.time >= parameters.simulationEndConditionStart
-        and s0.xVelocity <= parameters.simulationEndCondition)
+        (parameters.simulationEndCondition != -1 and s0.xvelocity <= parameters.simulationEndCondition)
         ):
         print(f"Simulation terminated @ time {s0.time}.\nFinal Position: {(s0.xPos, s0.yPos)}\nFinal Velocity: {(s0.xVelocity, s0.yVelocity)}")
         ani.event_source.stop()

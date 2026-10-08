@@ -15,9 +15,9 @@ class Parameters:
     Can be edited to change simulation values, or add new parameter variables.
     Units are Base SI unless otherwise stated.
     """
-    simulationDuration:float = 10 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
-    simulationEndCondition:float = -1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
-    simulationEndConditionStart:float = 10 # The time to start checking for the simulation end condition, if there is one
+    simulationDuration:float = -1 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
+    simulationEndCondition:float = 0.0 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
+    simulationEndConditionStart:float = 2.0 # The time to start checking for the simulation end condition, if there is one
     timestep:float = 0.1
 
     xPlotSize:int = 300
@@ -25,8 +25,9 @@ class Parameters:
     expandGraph:bool = True # If true, the simulation's graph plot will change pages to fit the car
 
     initPosition:list[float] = field(default_factory=lambda: [0.0, 0.0])
-    initVelocity:list[float] = field(default_factory=lambda: [0.0, 0.0])
+    initVelocity:list[float] = field(default_factory=lambda: [25.0, 0.0])
 
+    maxBrakingCapacity:float = 1850.0
     mass:float = 300.0
 
 @dataclass
@@ -47,19 +48,20 @@ def step (state:State) -> State:
     Can be edited to change input conditions and times, and change equations for calculation
     """
     # Driver input conditions
-    if (state.time <= 10):
-        driver_input = 1
-    else:
+    if (state.time <= 2):
         driver_input = 0
+    else:
+        driver_input = 1
     # Calculate acceleration
-    acceleration = driver_input
+    brakingForce = driver_input * parameters.maxBrakingCapacity
+    acceleration = -1 * (brakingForce / parameters.mass)
 
     # Return a new State with updated time, position and velocity
     return State(
         time = state.time + parameters.timestep,
         xPos = state.xPos + (state.xVelocity * parameters.timestep),
         yPos = 0.0,
-        xVelocity = state.xVelocity + (acceleration * parameters.timestep),
+        xVelocity = max(0.0, state.xVelocity + (acceleration * parameters.timestep)),
         yVelocity = 0.0
     )
 
@@ -69,7 +71,7 @@ def animate (i):
     """
     global s0, car
     # Step forwards and get updated state
-    s0 = step(s0)  
+    s0 = step(s0)
 
     # Check for simulation stop conditions
     if ((parameters.simulationDuration != -1 and s0.time >= parameters.simulationDuration) or
