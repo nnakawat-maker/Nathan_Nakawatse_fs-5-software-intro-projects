@@ -17,9 +17,9 @@ class Parameters:
     """
     # Time Config
     simulationDuration: float = -1 # The simulation ends when time > this variable. '-1' makes it run indefinitely
-    simulationEndCondition: float = 1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
+    simulationEndCondition: float = 0.1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
     simulationEndConditionStart: float = 10.0 # The time to start checking for the simulation end condition, if there is one
-    timestep: float = 0.1
+    timestep: float = 0.01
     # Plot Config
     xPlotSize: int = 300
     yPlotSize: int = 10
@@ -32,6 +32,8 @@ class Parameters:
     crossSectionalArea: float = 1.2
     dragCoefficient: float = 0.7
     mass: float = 300.0
+    rollingResistanceCoefficient: float = 0.015
+    gravity: float = 9.81
     # Data Config
     storeData: bool = True # If true, the Data dataclass will be used to store simulation data
 
@@ -95,7 +97,9 @@ def step (state:State) -> State:
         acceleration = 0
     # Calculate acceleration
     drag = 0.5 * parameters.crossSectionalArea * parameters.dragCoefficient * parameters.airDensity * (state.xVelocity**2)
-    netAcceleration = acceleration - (drag / parameters.mass)
+    weight = parameters.mass * parameters.gravity
+    rollingResistance = weight * parameters.rollingResistanceCoefficient
+    netAcceleration = acceleration - ((drag + rollingResistance) / parameters.mass)
 
     # Return a new State with updated time, position and velocity
     return State(
@@ -113,7 +117,7 @@ def animate (i):
     global s0, car
     # Step forwards and get updated state
     s0 = step(s0)  
-    
+
     # Update Data if necessary
     if (parameters.storeData):
         data.addData(s0.time, s0.xPos, s0.yPos, s0.xVelocity, s0.yVelocity)
