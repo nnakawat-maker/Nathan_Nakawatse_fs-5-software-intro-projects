@@ -1,6 +1,6 @@
 # Simulations Onboarding Project - Fall 2026 (fs-5 design cycle)
 
-- All parts follow exact same template [template](template.py)
+- All parts follow exact same template (template.py)
 - Parameters allows configeration of:
     * Simulation time
     * Matplotlib
