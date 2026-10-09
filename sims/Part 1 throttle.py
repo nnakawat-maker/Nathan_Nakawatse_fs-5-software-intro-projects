@@ -28,10 +28,15 @@ class Parameters:
     initPosition: list[float] = field(default_factory = lambda: [0.0, 0.0])
     initVelocity: list[float] = field(default_factory = lambda: [0.0, 0.0])
     # Constant Config
+    airDensity: float = 1.2
+    crossSectionalArea: float = 1.2
+    dragCoefficient: float = 0.7
     maxMotorTorque: float = 180
     mass: float = 300.0
     gearRatio: float = 3.0
     wheelRadius: float = 0.216
+    rollingResistanceCoefficient: float = 0.015
+    gravity: float = 9.81
     # Data Config
     storeData: bool = True # If true, the Data dataclass will be used to store simulation data
 
@@ -96,14 +101,20 @@ def step (state:State) -> State:
     # Calculate acceleration
     commandTorque = driverInput * parameters.maxMotorTorque 
     force = (commandTorque * parameters.gearRatio) / parameters.wheelRadius
+
+    drag = 0.5 * parameters.crossSectionalArea * parameters.dragCoefficient * parameters.airDensity * (state.xVelocity**2)
+    weight = parameters.mass * parameters.gravity
+    rollingResistance = weight * parameters.rollingResistanceCoefficient
+    
     acceleration = force / parameters.mass
+    netAcceleration = acceleration - ((drag + rollingResistance) / parameters.mass)
 
     # Return a new State with updated time, position and velocity
     return State(
         time = state.time + parameters.timestep,
         xPos = state.xPos + (state.xVelocity * parameters.timestep),
         yPos = 0.0,
-        xVelocity = state.xVelocity + (acceleration * parameters.timestep),
+        xVelocity = max(state.xVelocity + (netAcceleration * parameters.timestep), 0.0),
         yVelocity = 0.0
     )
 

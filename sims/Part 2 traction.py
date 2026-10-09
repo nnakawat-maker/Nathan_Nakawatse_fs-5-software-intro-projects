@@ -103,7 +103,7 @@ def step (state:State) -> State:
         xPos = state.xPos + (state.xVelocity * parameters.timestep),
         yPos = state.yPos + (state.yVelocity * parameters.timestep),
         xVelocity = 15.0,
-        yVelocity = state.yVelocity + (acceleration * parameters.timestep)
+        yVelocity = max(state.yVelocity + (acceleration * parameters.timestep), 0.0)
     )
 
 def animate (i):

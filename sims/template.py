@@ -98,7 +98,7 @@ def step (state:State) -> State:
         time = state.time + parameters.timestep,
         xPos = state.xPos + (state.xVelocity * parameters.timestep),
         yPos = 0.0,
-        xVelocity = state.xVelocity + (acceleration * parameters.timestep),
+        xVelocity = max(state.xVelocity + (acceleration * parameters.timestep), 0.0),
         yVelocity = 0.0
     )
 
@@ -113,7 +113,7 @@ def animate (i):
     # Update Data if necessary
     if (parameters.storeData):
         data.addData(s0.time, s0.xPos, s0.yPos, s0.xVelocity, s0.yVelocity)
-        
+
     # Check for simulation stop conditions
     if ((parameters.simulationDuration != -1 and s0.time >= parameters.simulationDuration) or
         (parameters.simulationEndCondition != -1 and s0.time >= parameters.simulationEndConditionStart

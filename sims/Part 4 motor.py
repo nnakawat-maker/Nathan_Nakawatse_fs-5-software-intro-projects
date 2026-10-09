@@ -101,7 +101,7 @@ def step (state:State) -> State:
         time = state.time + parameters.timestep,
         xPos = state.xPos + (state.xVelocity * parameters.timestep),
         yPos = 0.0,
-        xVelocity = state.xVelocity + (acceleration * parameters.timestep),
+        xVelocity = max(state.xVelocity + (acceleration * parameters.timestep), 0.0),
         yVelocity = 0.0
     )
 
