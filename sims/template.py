@@ -15,30 +15,69 @@ class Parameters:
     Can be edited to change simulation values, or add new parameter variables.
     Units are Base SI unless otherwise stated.
     """
-    simulationDuration:float = 10 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
-    simulationEndCondition:float = -1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
-    simulationEndConditionStart:float = 10 # The time to start checking for the simulation end condition, if there is one
-    timestep:float = 0.1
+    # Time Config
+    simulationDuration: float = 10.0 # The simulation ends when time >= this variable. '-1' makes it run indefinitely
+    simulationEndCondition: float = -1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
+    simulationEndConditionStart: float = 10.0 # The time to start checking for the simulation end condition, if there is one
+    timestep: float = 0.1
+    # Plot Config
+    xPlotSize: int = 300
+    yPlotSize: int = 10
+    expandGraph: bool = True # If true, the simulation's graph plot will change pages to fit the car
+    # Initial Variable Config
+    initPosition: list[float] = field(default_factory = lambda: [0.0, 0.0])
+    initVelocity: list[float] = field(default_factory = lambda: [0.0, 0.0])
+    # Constant Config
+    mass: float = 300.0
+    # Data Config
+    storeData: bool = True # If true, the Data dataclass will be used to store simulation data
 
-    xPlotSize:int = 300
-    yPlotSize:int = 10
-    expandGraph:bool = True # If true, the simulation's graph plot will change pages to fit the car
-
-    initPosition:list[float] = field(default_factory=lambda: [0.0, 0.0])
-    initVelocity:list[float] = field(default_factory=lambda: [0.0, 0.0])
-
-    mass:float = 300.0
 
 @dataclass
 class State:
     """
     An object that stores the car's data related to its position and velocity at a specific time.
     """
-    time:float
-    xPos:float
-    yPos:float
-    xVelocity:float
-    yVelocity:float
+    time: float
+    xPos: float
+    yPos: float
+    xVelocity: float
+    yVelocity: float
+
+
+@dataclass
+class Data:
+    """
+    An object that stores simulation results
+    """
+    length: int = 0
+    timeList: list[float] = field(default_factory = list)
+    xPosList: list[float] = field(default_factory = list)
+    yPosList: list[float] = field(default_factory = list)
+    xVelocityList: list[float] = field(default_factory = list)
+    yVelocityList: list[float] = field(default_factory = list)
+
+    def addData (self, time:float, xPos:float, yPos:float, xVelocity:float, yVelocity:float):
+        """
+        Takes data, and adds it to lists for storage
+        """
+        self.length += 1
+        self.timeList.append(time)
+        self.xPosList.append(xPos)
+        self.yPosList.append(yPos)
+        self.xVelocityList.append(xVelocity)
+        self.yVelocityList.append(yVelocity)
+
+    def printData (self):
+        """
+        Iterates through lists, and prints data. Also adds labels at top and bottom of data
+        """
+        print(f"{'time':>10} {'xPos':>10} {'yPos':>10} {'xVelocity':>10} {'yVelocity':>10}")
+
+        for i in range(self.length):
+            print(f"{self.timeList[i]:>10.3f} {self.xPosList[i]:>10.3f} {self.yPosList[i]:>10.3f} {self.xVelocityList[i]:>10.3f} {self.yVelocityList[i]:>10.3f}")
+
+        print(f"{'time':>10} {'xPos':>10} {'yPos':>10} {'xVelocity':>10} {'yVelocity':>10}")
 
 def step (state:State) -> State:
     """
@@ -48,11 +87,11 @@ def step (state:State) -> State:
     """
     # Driver input conditions
     if (state.time <= 10):
-        driver_input = 1
+        driverInput = 1
     else:
-        driver_input = 0
+        driverInput = 0
     # Calculate acceleration
-    acceleration = driver_input
+    acceleration = driverInput
 
     # Return a new State with updated time, position and velocity
     return State(
@@ -71,13 +110,20 @@ def animate (i):
     # Step forwards and get updated state
     s0 = step(s0)  
 
+    # Update Data if necessary
+    if (parameters.storeData):
+        data.addData(s0.time, s0.xPos, s0.yPos, s0.xVelocity, s0.yVelocity)
+        
     # Check for simulation stop conditions
     if ((parameters.simulationDuration != -1 and s0.time >= parameters.simulationDuration) or
         (parameters.simulationEndCondition != -1 and s0.time >= parameters.simulationEndConditionStart
         and s0.xVelocity <= parameters.simulationEndCondition)
         ):
-        print(f"Simulation terminated @ time {s0.time}.\nFinal Position: {(s0.xPos, s0.yPos)}\nFinal Velocity: {(s0.xVelocity, s0.yVelocity)}")
+        print("Simulation Terminated")
+        if (parameters.storeData):
+            data.printData()
         ani.event_source.stop()
+        return
 
     # Update the car's coordinates
     car.set_offsets([[s0.xPos, s0.yPos]])
@@ -97,14 +143,15 @@ def animate (i):
             ax.set_xlim(xMin, xMax)
         if ax.get_ylim() != (yMin, yMax):
             ax.set_ylim(yMin, yMax)
-
     return
 
 
 parameters = Parameters()
+if (parameters.storeData):
+    data = Data()
 s0 = State(time = 0, xPos = parameters.initPosition[0], yPos = parameters.initPosition[1], xVelocity = parameters.initVelocity[0], yVelocity= parameters.initVelocity[1])
 
-fig = plt.figure(figsize=(3,3), dpi=150)
+fig = plt.figure(figsize = (3,3), dpi = 150)
 ax = fig.add_subplot(111)
 ax.grid()
 ax.set_xlim(-2, 2)
@@ -117,5 +164,5 @@ ax.set_ylim(0, parameters.yPlotSize)
 
 car = ax.scatter([parameters.initPosition[0]],[parameters.initPosition[1]], s = 200, c = 'red', marker = 's')
 
-ani = animation.FuncAnimation(fig, animate, interval=0)
+ani = animation.FuncAnimation(fig, animate, interval = 0)
 plt.show()

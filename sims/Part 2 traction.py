@@ -8,6 +8,7 @@ import numpy as np
 import sys
 
 # Simulation Parameters
+# For the sake of simplicity, the x-axis represents forward velocity, and the y-axis represents lateral velocity
 @dataclass(frozen=True)
 class Parameters:
     """
@@ -16,19 +17,19 @@ class Parameters:
     Units are Base SI unless otherwise stated.
     """
     # Time Config
-    simulationDuration: float = -1 # The simulation ends when time > this variable. '-1' makes it run indefinitely
-    simulationEndCondition: float = 0.0 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
-    simulationEndConditionStart: float = 0 # The time to start checking for the simulation end condition, if there is one
+    simulationDuration: float = 10.0 # The simulation ends when time > this variable. '-1' makes it run indefinitely
+    simulationEndCondition: float = -1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
+    simulationEndConditionStart: float = 10.0 # The time to start checking for the simulation end condition, if there is one
     timestep: float = 0.01
     # Plot Config
     xPlotSize: int = 300
-    yPlotSize: int = 10
+    yPlotSize: int = 300
     expandGraph: bool = True # If true, the simulation's graph plot will change pages to fit the car
     # Initial Variable Config
     initPosition: list[float] = field(default_factory = lambda: [0.0, 0.0])
-    initVelocity: list[float] = field(default_factory = lambda: [25, 0.0])
+    initVelocity: list[float] = field(default_factory = lambda: [15.0, 0.0])
     # Constant Config
-    maxBrakingCapacity: float = 1850
+    corneringStiffness: float = 36000
     mass: float = 300.0
     # Data Config
     storeData: bool = True # If true, the Data dataclass will be used to store simulation data
@@ -87,21 +88,22 @@ def step (state:State) -> State:
     Can be edited to change input conditions and times, and change equations for calculation
     """
     # Driver input conditions
-    if (state.time <= 2):
-        driverInput = 0.0
+    if (state.time <= 3):
+        steerAngle = 5 * state.time / 3
     else:
-        driverInput = 1.0
+        steerAngle = 5
     # Calculate acceleration
-    force = driverInput * parameters.maxBrakingCapacity
-    acceleration = -1 * (force / parameters.mass)
+    slipAngle = steerAngle - (state.yVelocity / state.xVelocity)
+    force = parameters.corneringStiffness * slipAngle
+    acceleration = force / parameters.mass
 
     # Return a new State with updated time, position and velocity
     return State(
         time = state.time + parameters.timestep,
         xPos = state.xPos + (state.xVelocity * parameters.timestep),
-        yPos = 0.0,
-        xVelocity = max(state.xVelocity + (acceleration * parameters.timestep), 0.0),
-        yVelocity = 0.0
+        yPos = state.yPos + (state.yVelocity * parameters.timestep),
+        xVelocity = 15.0,
+        yVelocity = state.yVelocity + (acceleration * parameters.timestep)
     )
 
 def animate (i):
@@ -145,7 +147,6 @@ def animate (i):
             ax.set_xlim(xMin, xMax)
         if ax.get_ylim() != (yMin, yMax):
             ax.set_ylim(yMin, yMax)
-
     return
 
 
