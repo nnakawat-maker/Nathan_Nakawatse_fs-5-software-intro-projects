@@ -33,6 +33,7 @@ class Parameters:
     mass: float = 300.0
     # Sheet Config
     spreadsheetKey: str = '1zBsF46AYu-NVthRxKRAfHhW2454yw_v6TmWknU5z_Wk' # Key of spreadsheet to input data into
+    labels: list[str] = field(default_factory = lambda: ['Time', 'X Position', 'Y Position', 'X Velocity', 'Y Velocity', 'Acceleration'])
     worksheet: str = 'Motor'
 
 
@@ -59,6 +60,7 @@ class Sheet:
 
     def pushData (self):
         self.worksheet.clear()
+        self.worksheet.update([parameters.labels], 'A1')
         self.worksheet.update(self.data, 'A2')
 
 def step (state:State) -> State:
