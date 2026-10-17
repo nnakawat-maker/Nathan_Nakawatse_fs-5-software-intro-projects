@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from dataclasses import dataclass, field
 import numpy as np
-import sys
+import gspread
 
 # Simulation Parameters
 @dataclass(frozen=True)
@@ -16,7 +16,7 @@ class Parameters:
     Units are Base SI unless otherwise stated.
     """
     # Time Config
-    simulationDuration: float = 23.0 # The simulation ends when time > this variable. '-1' makes it run indefinitely
+    simulationDuration: float = 22.0 # The simulation ends when time > this variable. '-1' makes it run indefinitely
     simulationEndCondition: float = -1 # The simulation ends when xVelocity <= this variable '-1' makes it so there is no end condition.
     simulationEndConditionStart: float = 10.0 # The time to start checking for the simulation end condition, if there is one
     timestep: float = 0.01
@@ -31,8 +31,9 @@ class Parameters:
     maxPropulsionForce: float = 2000
     vMax: float = 27
     mass: float = 300.0
-    # Data Config
-    storeData: bool = True # If true, the Data dataclass will be used to store simulation data
+    # Sheet Config
+    spreadsheetKey: str = '1zBsF46AYu-NVthRxKRAfHhW2454yw_v6TmWknU5z_Wk' # Key of spreadsheet to input data into
+    worksheet: str = 'Motor'
 
 
 @dataclass
@@ -47,39 +48,18 @@ class State:
     yVelocity: float
 
 
-@dataclass
-class Data:
-    """
-    An object that stores simulation results
-    """
-    length: int = 0
-    timeList: list[float] = field(default_factory = list)
-    xPosList: list[float] = field(default_factory = list)
-    yPosList: list[float] = field(default_factory = list)
-    xVelocityList: list[float] = field(default_factory = list)
-    yVelocityList: list[float] = field(default_factory = list)
+class Sheet:
+    def __init__ (self, worksheet: gspread.worksheet, initdata:list):
+        self.worksheet = worksheet
+        self.data = [initdata]
 
-    def addData (self, time:float, xPos:float, yPos:float, xVelocity:float, yVelocity:float):
-        """
-        Takes data, and adds it to lists for storage
-        """
-        self.length += 1
-        self.timeList.append(time)
-        self.xPosList.append(xPos)
-        self.yPosList.append(yPos)
-        self.xVelocityList.append(xVelocity)
-        self.yVelocityList.append(yVelocity)
+    def addData (self, data:list):
+        roundedData = [round(i, 5) for i in data]
+        self.data.append(roundedData)
 
-    def printData (self):
-        """
-        Iterates through lists, and prints data. Also adds labels at top and bottom of data
-        """
-        print(f"{'time':>10} {'xPos':>10} {'yPos':>10} {'xVelocity':>10} {'yVelocity':>10}")
-
-        for i in range(self.length):
-            print(f"{self.timeList[i]:>10.3f} {self.xPosList[i]:>10.3f} {self.yPosList[i]:>10.3f} {self.xVelocityList[i]:>10.3f} {self.yVelocityList[i]:>10.3f}")
-
-        print(f"{'time':>10} {'xPos':>10} {'yPos':>10} {'xVelocity':>10} {'yVelocity':>10}")
+    def pushData (self):
+        self.worksheet.clear()
+        self.worksheet.update(self.data, 'A2')
 
 def step (state:State) -> State:
     """
@@ -88,22 +68,29 @@ def step (state:State) -> State:
     Can be edited to change input conditions and times, and change equations for calculation
     """
     # Driver input conditions
-    if (state.time <= 3):
-        driverInput = state.time / 3
+    if (state.time <= 7):
+        driverInput = state.time / 7
     else:
         driverInput = 1.0
     # Calculate acceleration
     force = parameters.maxPropulsionForce * driverInput * (1 - (state.xVelocity / parameters.vMax))
     acceleration = force / parameters.mass
 
-    # Return a new State with updated time, position and velocity
+    newTime = state.time + parameters.timestep
+    newXPos = state.xPos + (state.xVelocity * parameters.timestep)
+    newYPos = 0.0
+    newXVelocity = max(state.xVelocity + (acceleration * parameters.timestep), 0.0)
+    newYVelocity = 0.0
+    sheet.addData([newTime, newXPos, newYPos, newXVelocity, newYVelocity, acceleration * parameters.timestep])
+
     return State(
-        time = state.time + parameters.timestep,
-        xPos = state.xPos + (state.xVelocity * parameters.timestep),
-        yPos = 0.0,
-        xVelocity = max(state.xVelocity + (acceleration * parameters.timestep), 0.0),
-        yVelocity = 0.0
+        time = newTime,
+        xPos = newXPos,
+        yPos = newYPos,
+        xVelocity = newXVelocity,
+        yVelocity = newYVelocity
     )
+
 
 def animate (i):
     """
@@ -112,10 +99,6 @@ def animate (i):
     global s0, car
     # Step forwards and get updated state
     s0 = step(s0)  
-
-    # Update Data if necessary
-    if (parameters.storeData):
-        data.addData(s0.time, s0.xPos, s0.yPos, s0.xVelocity, s0.yVelocity)
     
     # Check for simulation stop conditions
     if ((parameters.simulationDuration != -1 and s0.time > parameters.simulationDuration) or
@@ -123,8 +106,7 @@ def animate (i):
         and s0.xVelocity <= parameters.simulationEndCondition)
         ):
         print("Simulation Terminated")
-        if (parameters.storeData):
-            data.printData()
+        sheet.pushData()
         ani.event_source.stop()
         return
 
@@ -150,8 +132,12 @@ def animate (i):
 
 
 parameters = Parameters()
-if (parameters.storeData):
-    data = Data()
+
+gc = gspread.oauth()
+sh = gc.open_by_key(parameters.spreadsheetKey)
+worksheet = sh.worksheet(parameters.worksheet)
+sheet = Sheet(worksheet = worksheet, initdata = [0, parameters.initPosition[0], parameters.initPosition[1],
+                                                 parameters.initVelocity[0], parameters.initVelocity[1], 0.0])
 s0 = State(time = 0, xPos = parameters.initPosition[0], yPos = parameters.initPosition[1], xVelocity = parameters.initVelocity[0], yVelocity= parameters.initVelocity[1])
 
 fig = plt.figure(figsize = (3,3), dpi = 150)
